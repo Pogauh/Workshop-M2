@@ -1,0 +1,16 @@
+---
+# Sauvegarde logique de la base (PCA/PRA, voir docs/pca-pra.md) : pg_dump vers backups/, horodaté, hors du volume Docker.
+- name: Sauvegarder la base de données
+  hosts: host
+  vars: { project_dir: "{{ playbook_dir }}/..", stamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}" }
+  tasks:
+    - name: Créer le dossier de sauvegardes (hors du dépôt versionné)
+      file: { path: "{{ project_dir }}/backups", state: directory, mode: "0750" }
+    - name: pg_dump (format personnalisé, compressé)
+      shell: >
+        docker compose exec -T db pg_dump -U postgres -Fc payments
+        > "{{ project_dir }}/backups/payments-{{ stamp }}.dump"
+      args: { chdir: "{{ project_dir }}" }
+    - name: Conserver les 10 sauvegardes les plus récentes
+      shell: ls -1t "{{ project_dir }}/backups"/payments-*.dump | tail -n +11 | xargs -r rm --
+      changed_when: false

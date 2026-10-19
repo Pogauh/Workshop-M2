@@ -1,0 +1,18 @@
+server: { http_listen_port: 9080 }
+positions: { filename: /tmp/positions.yaml }
+clients: [{ url: http://loki:3100/loki/api/v1/push }]
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: tcp://docker-ro:2375
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: [__meta_docker_container_name]
+        regex: '/immune-(.*)'
+        target_label: service
+      - source_labels: [__meta_docker_container_name]
+        target_label: container
+    pipeline_stages:
+      # Champs communs extraits une seule fois : les requêtes LogQL du détecteur et des tableaux de bord
+      # (waf/features.py, api, auth) utilisent `| json <champs précis>`, jamais un `| json` complet sous forte charge.
+      - json: { expressions: { status: status, banned: banned, rt: rt, rule: rule, remote_addr: ip, user: user, path: path, event: event, result: result } }

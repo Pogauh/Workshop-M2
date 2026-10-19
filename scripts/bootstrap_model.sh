@@ -1,0 +1,33 @@
+#!/bin/sh
+# Entraîne le modèle d'anomalie sur un trafic NORMAL réel, puis l'évalue sur de vraies attaques (flood, brute-force).
+# À lancer une fois la plateforme démarrée (docker compose up -d). Durée par défaut : ~20 minutes.
+#   ./scripts/bootstrap_model.sh                 phases par défaut (8 / 2 / 2 min)
+#   ./scripts/bootstrap_model.sh 15 3 3           durées personnalisées (minutes) : normal flood brute
+set -eu
+cd "$(dirname "$0")/.."
+N=${1:-8}; F=${2:-2}; B=${3:-2}
+DC="docker compose"
+
+echo "1/4 Collecte du trafic NORMAL (${N} min) : démarrage du générateur..."
+"$DC" --profile lab run -d --name immune-boot-traffic traffic python normal_traffic.py --seconds $((N * 60 + 30)) >/dev/null
+"$DC" exec -T detector python -m app.collect --label normal --minutes "$N"
+"$DC" stop immune-boot-traffic >/dev/null 2>&1 || true; "$DC" rm -f immune-boot-traffic >/dev/null 2>&1 || true
+
+echo "2/4 Collecte du trafic FLOOD (${F} min) : lancement de l'attaquant..."
+ATTACKER_PW=$(sed -n 's/^ATTACKER_PASSWORD=//p' .env)
+"$DC" --profile lab run -d --name immune-boot-flood attacker python flood.py --password "$ATTACKER_PW" --target http://waf:8080 --seconds $((F * 60 + 20)) >/dev/null
+"$DC" exec -T detector python -m app.collect --label flood --minutes "$F"
+"$DC" stop immune-boot-flood >/dev/null 2>&1 || true; "$DC" rm -f immune-boot-flood >/dev/null 2>&1 || true
+
+echo "3/4 Collecte du trafic BRUTE-FORCE (${B} min)."
+echo "    Depuis le PC Attaquant (ou un autre terminal), lancez MAINTENANT votre outil de brute-force (voir"
+echo "    attacker/README.md) contre POST http://192.168.137.1:8080/auth/login avec le compte 'carol' et un"
+echo "    mot de passe incorrect, pendant au moins ${B} minute(s). Ce script attend pendant ce temps et enregistre"
+echo "    les observations du détecteur."
+"$DC" exec -T detector python -m app.collect --label brute --minutes "$B"
+
+echo "4/4 Entraînement du modèle et évaluation..."
+"$DC" exec -T detector python -m app.train
+./scripts/reset.sh
+echo "Terminé. Rapport : docker compose exec detector cat /data/report.json"
+echo "Pour l'embarquer dans l'image (livrable Code.zip) : ./scripts/export_model.sh"

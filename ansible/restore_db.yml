@@ -1,0 +1,23 @@
+---
+# Restauration depuis une sauvegarde pg_dump (PCA/PRA). Usage : ansible-playbook restore_db.yml -e backup_file=backups/payments-XXXX.dump
+- name: Restaurer la base de données depuis une sauvegarde
+  hosts: host
+  vars: { project_dir: "{{ playbook_dir }}/.." }
+  tasks:
+    - name: Vérifier que backup_file est fourni et existe
+      stat: { path: "{{ project_dir }}/{{ backup_file | default('') }}" }
+      register: bf
+      when: backup_file is defined
+    - fail: { msg: "Indiquez -e backup_file=backups/payments-XXXX.dump (fichier introuvable ou non fourni)" }
+      when: backup_file is not defined or not bf.stat.exists
+    - name: Arrêter les services qui écrivent dans la base
+      command: docker compose stop api auth remediator
+      args: { chdir: "{{ project_dir }}" }
+    - name: Réinitialiser le schéma puis restaurer
+      shell: |
+        docker compose exec -T db psql -U postgres -d payments -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+        docker compose exec -T db pg_restore -U postgres -d payments < "{{ backup_file }}"
+      args: { chdir: "{{ project_dir }}" }
+    - name: Redémarrer les services
+      command: docker compose start api auth remediator
+      args: { chdir: "{{ project_dir }}" }

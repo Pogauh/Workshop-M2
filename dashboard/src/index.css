@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0e1a22;          /* pétrole nuit */
+  --panel: #142530;
+  --raise: #1b3140;
+  --line: #25404f;
+  --ink: #e6edf1;
+  --muted: #93a8b4;
+  --series: #3987e5;      /* unique couleur de série : le bleu des signes vitaux */
+  --ok: #3fb27f;  --warn: #e0a030;  --serious: #ee8140;  --crit: #ef5b53;  --info: #4aa3ff;   /* états : toujours avec icône + libellé */
+}
+
+@layer base {
+  html { background: var(--bg); color: var(--ink); -webkit-text-size-adjust: 100%; color-scheme: dark; }
+  body { margin: 0; min-height: 100vh; font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--info); outline-offset: 2px; }
+}
+
+@layer components {
+  .ecg { animation: ecg 5s linear infinite; }
+  .live { position: relative; display: inline-block; width: .55rem; height: .55rem; border-radius: 9999px; background: currentColor; }
+  .live::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: currentColor; animation: live 2s ease-out infinite; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { padding: .3rem .8rem; font-size: .85rem; color: var(--muted); background: transparent; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--raise); color: var(--ink); font-weight: 600; }
+  .seg button + button { border-left: 1px solid var(--line); }
+}
+
+@keyframes ecg { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes live { from { transform: scale(1); opacity: .5; } to { transform: scale(2.8); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

@@ -1,0 +1,20 @@
+# secrets en clair : jamais commités (générés localement par scripts/gen_secrets.sh)
+.env
+*.env
+!.env.example
+*.pem
+*.key
+
+# artefacts
+node_modules/
+dist/
+__pycache__/
+*.pyc
+*.csv
+!attacker/wordlist.txt
+detector/model/*.joblib
+!detector/model/.keep
+backups/*.sql*
+*.zip
+*.mp4
+.venv/

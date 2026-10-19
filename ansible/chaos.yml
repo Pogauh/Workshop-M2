@@ -1,0 +1,19 @@
+---
+# Ingénierie du chaos : tue un service métier au hasard pour vérifier la reprise autonome (sans intervention humaine,
+# condition de notation de l'axe 1). Le moteur doit le détecter (chien de garde) et le redémarrer seul.
+- name: Tuer un service au hasard et observer la reprise autonome
+  hosts: host
+  vars:
+    project_dir: "{{ playbook_dir }}/.."
+    target: "{{ chaos_service | default(['api', 'auth', 'db'] | random) }}"
+  tasks:
+    - debug: { msg: "Chaos : arrêt brutal de {{ target }}" }
+    - name: Tuer le conteneur (SIGKILL, pas un arrêt propre)
+      command: "docker kill immune-{{ target }}"
+    - name: Attendre que le moteur de remédiation détecte et redémarre le service
+      uri: { url: "http://localhost:8080/api/health", status_code: 200 }
+      register: r
+      retries: 60
+      delay: 2
+      until: r.status == 200
+    - debug: { msg: "Service rétabli : voir la console de supervision (http://localhost:3000) pour le MTTR mesuré." }

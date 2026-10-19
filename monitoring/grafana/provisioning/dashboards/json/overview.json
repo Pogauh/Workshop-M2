@@ -1,0 +1,56 @@
+{
+  "title": "Système immunitaire : vue d'ensemble",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "5s",
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    { "type": "state-timeline", "title": "État du moteur", "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [{ "expr": "remediator_state == 1", "legendFormat": "{{state}}", "datasource": { "type": "prometheus" } }] },
+    { "type": "stat", "title": "Transaction témoin", "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "value": 0, "color": "red" }, { "value": 1, "color": "green" }] } } },
+      "targets": [{ "expr": "remediator_probe_ok", "datasource": { "type": "prometheus" } }] },
+    { "type": "stat", "title": "Débit de paiement autorisé", "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 }, "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [{ "expr": "remediator_pay_rate_limit", "datasource": { "type": "prometheus" } }] },
+    { "type": "stat", "title": "Dernier MTTR", "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 }, "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [{ "expr": "remediator_last_mttr_seconds", "datasource": { "type": "prometheus" } }] },
+
+    { "type": "timeseries", "title": "Débit de requêtes par statut (API)", "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [{ "expr": "sum by (status) (rate(http_requests_total[15s]))", "legendFormat": "{{status}}", "datasource": { "type": "prometheus" } }] },
+    { "type": "timeseries", "title": "Latence p95 (API)", "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 }, "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, endpoint) (rate(http_request_duration_seconds_bucket[15s])))", "legendFormat": "{{endpoint}}", "datasource": { "type": "prometheus" } }] },
+
+    { "type": "timeseries", "title": "Score d'anomalie ML (plus bas = plus anormal)", "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "targets": [{ "expr": "anomaly_score", "legendFormat": "score", "datasource": { "type": "prometheus" } }] },
+    { "type": "timeseries", "title": "Connexions : total et échecs", "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "sum(rate(auth_logins_total[15s]))", "legendFormat": "toutes", "datasource": { "type": "prometheus" } },
+        { "expr": "sum(rate(auth_logins_total{result=\"fail\"}[15s]))", "legendFormat": "échecs", "datasource": { "type": "prometheus" } },
+        { "expr": "sum(rate(auth_logins_total{result=\"locked\"}[15s]))", "legendFormat": "verrouillés", "datasource": { "type": "prometheus" } }
+      ] },
+
+    { "type": "timeseries", "title": "Requêtes en cours", "gridPos": { "x": 0, "y": 20, "w": 8, "h": 7 },
+      "targets": [{ "expr": "http_inflight_requests", "datasource": { "type": "prometheus" } }] },
+    { "type": "timeseries", "title": "État des services (1 = sain)", "gridPos": { "x": 8, "y": 20, "w": 8, "h": 7 }, "fieldConfig": { "defaults": { "min": 0, "max": 1 } },
+      "targets": [{ "expr": "remediator_service_up", "legendFormat": "{{service}}", "datasource": { "type": "prometheus" } }] },
+    { "type": "stat", "title": "Comptes verrouillés / suspendus", "gridPos": { "x": 16, "y": 20, "w": 8, "h": 7 },
+      "targets": [
+        { "expr": "remediator_locked_accounts", "legendFormat": "verrouillés", "datasource": { "type": "prometheus" } },
+        { "expr": "remediator_suspended_accounts", "legendFormat": "suspendus", "datasource": { "type": "prometheus" } }
+      ] },
+
+    { "type": "timeseries", "title": "Incidents et actions de remédiation (cumul)", "gridPos": { "x": 0, "y": 27, "w": 12, "h": 7 },
+      "targets": [
+        { "expr": "remediator_incidents_total", "legendFormat": "incidents {{outcome}}", "datasource": { "type": "prometheus" } },
+        { "expr": "remediator_actions_total", "legendFormat": "action {{action}}", "datasource": { "type": "prometheus" } }
+      ] },
+    { "type": "timeseries", "title": "Alertes SIEM (règles R1 à R5)", "gridPos": { "x": 12, "y": 27, "w": 12, "h": 7 },
+      "targets": [{ "expr": "sum by (rule) (increase(siem_alerts_total[1m]))", "legendFormat": "{{rule}}", "datasource": { "type": "prometheus" } }] },
+
+    { "type": "logs", "title": "Journal du moteur de remédiation (Loki)", "gridPos": { "x": 0, "y": 34, "w": 12, "h": 9 },
+      "targets": [{ "expr": "{service=\"remediator\"} | json msg, level | __error__=\"\"", "datasource": { "type": "loki" } }] },
+    { "type": "logs", "title": "Requêtes bloquées par le WAF (Loki)", "gridPos": { "x": 12, "y": 34, "w": 12, "h": 9 },
+      "targets": [{ "expr": "{service=\"waf\"} | json status, rule, ip | __error__=\"\" | status=~\"403|429\"", "datasource": { "type": "loki" } }] }
+  ]
+}

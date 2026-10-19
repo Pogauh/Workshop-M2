@@ -1,0 +1,36 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Assistant local — RESILIENCE-ALPHA</title>
+<script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-6">
+<div class="max-w-2xl mx-auto space-y-4">
+  <h1 class="text-xl font-bold">Assistant local <span class="text-xs text-slate-400">lecture seule — aucune action</span></h1>
+  <div id="log" class="space-y-3 h-[28rem] overflow-y-auto bg-slate-900 rounded-xl p-4"></div>
+  <div class="flex gap-2">
+    <input id="q" class="flex-1 bg-slate-900 border border-slate-700 rounded p-2" placeholder="Pourquoi le systeme est-il en SURVEILLANCE ?">
+    <button onclick="ask()" class="bg-sky-600 px-4 rounded">Demander</button>
+  </div>
+  <div class="text-xs text-slate-500">Suggestions : "que signifie ESCALATION ?" · "quelle est l'echelle d'actions ?" · "l'assistant peut-il redemarrer l'API ?"</div>
+</div>
+<script>
+// Le texte reçu (question de l'utilisateur ET réponse du modèle) est inséré via textContent, jamais innerHTML :
+// une réponse de modèle local ne doit jamais pouvoir injecter du HTML/script dans cette page.
+const log = document.getElementById('log');
+function bubble(who, text) {
+  const wrap = document.createElement('div');
+  wrap.className = who === 'user' ? 'text-right' : 'text-left';
+  const span = document.createElement('span');
+  span.className = `inline-block px-3 py-2 rounded-lg ${who === 'user' ? 'bg-sky-700' : 'bg-slate-800'} max-w-[85%] whitespace-pre-wrap text-sm`;
+  span.textContent = text;
+  wrap.appendChild(span); log.appendChild(wrap); log.scrollTop = log.scrollHeight;
+  return span;
+}
+async function ask() {
+  const q = document.getElementById('q'); const question = q.value.trim(); if (!question) return;
+  bubble('user', question); q.value = ''; const pending = bubble('bot', '…');
+  try {
+    const r = await fetch('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question }) });
+    const j = await r.json();
+    pending.textContent = r.ok ? j.answer + (j.sources?.length ? '\n\nSources : ' + j.sources.join(', ') : '') : 'Erreur : ' + (j.detail || r.status);
+  } catch (e) { pending.textContent = 'Erreur réseau : ' + e; }
+}
+document.getElementById('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
+</script></body></html>

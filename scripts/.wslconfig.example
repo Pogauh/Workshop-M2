@@ -1,0 +1,8 @@
+# Si Docker Desktop tourne sur WSL2 : copiez ce fichier en %UserProfile%\.wslconfig et ajustez selon le PC Hôte.
+# Un budget mémoire explicite évite que WSL2 n'accapare toute la RAM pendant la démonstration (API, DB, Prometheus,
+# Loki, Grafana, détecteur ML, et éventuellement Ollama tournent en même temps).
+[wsl2]
+memory=10GB
+processors=4
+swap=4GB
+localhostForwarding=true

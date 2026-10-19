@@ -1,0 +1,8 @@
+---
+- name: Réinitialiser le laboratoire entre deux démonstrations (homéostasie)
+  hosts: host
+  vars: { project_dir: "{{ playbook_dir }}/.." }
+  tasks:
+    - name: Appeler /reset sur le moteur de remédiation
+      command: docker compose exec -T remediator python -m app.reset
+      args: { chdir: "{{ project_dir }}" }

@@ -1,0 +1,23 @@
+---
+- name: Déployer / relancer la plateforme immunitaire
+  hosts: host
+  vars: { project_dir: "{{ playbook_dir }}/.." }
+  tasks:
+    - name: Vérifier que les secrets existent (.env)
+      stat: { path: "{{ project_dir }}/.env" }
+      register: secrets
+    - name: Échouer si les secrets sont absents
+      fail: { msg: "Lancez ./scripts/gen_secrets.sh (ou scripts\\windows\\gen_secrets.ps1) avant de déployer" }
+      when: not secrets.stat.exists
+    - name: Construire les images
+      command: docker compose build
+      args: { chdir: "{{ project_dir }}" }
+    - name: Lancer la plateforme (sans l'assistant IA, profil par défaut)
+      command: docker compose up -d
+      args: { chdir: "{{ project_dir }}" }
+    - name: Attendre que l'API réponde
+      uri: { url: "http://localhost:8080/api/health", status_code: 200 }
+      register: r
+      retries: 30
+      delay: 3
+      until: r.status == 200

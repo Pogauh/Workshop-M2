@@ -1,0 +1,28 @@
+---
+- name: Vérifications de durcissement (à exécuter après deploy.yml)
+  hosts: host
+  vars: { project_dir: "{{ playbook_dir }}/.." }
+  tasks:
+    - name: Identité des conteneurs (nom + utilisateur)
+      shell: |
+        for c in $(docker compose ps -q); do
+          docker inspect -f '{{ "{{" }}.Name{{ "}}" }} user={{ "{{" }}.Config.User{{ "}}" }} ro={{ "{{" }}.HostConfig.ReadonlyRootfs{{ "}}" }}' "$c"
+        done
+      args: { chdir: "{{ project_dir }}" }
+      register: users
+      changed_when: false
+    - debug: var=users.stdout_lines
+    - name: Services qui tournent encore en utilisateur root (hors actuator, attendu)
+      set_fact:
+        root_services: "{{ users.stdout_lines | select('search', 'user=0:0|user=$') | reject('search', 'actuator') | list }}"
+    - debug: { msg: "Attention, en root : {{ root_services }}" }
+      when: root_services | length > 0
+    - name: Seul le WAF publie un port exposé au réseau (hotspot)
+      shell: docker compose config --format json | python3 -c "import json,sys; c=json.load(sys.stdin); [print(n) for n,s in c['services'].items() if s.get('ports') and n!='waf']"
+      args: { chdir: "{{ project_dir }}" }
+      register: pub
+      changed_when: false
+    - debug: { msg: "OK : seul le WAF publie un port." }
+      when: pub.stdout == ""
+    - fail: { msg: "Services exposés en plus du WAF : {{ pub.stdout_lines }}" }
+      when: pub.stdout != ""

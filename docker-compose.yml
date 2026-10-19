@@ -1,0 +1,305 @@
+# Système immunitaire numérique : plateforme de paiement PayAlpha qui se défend et se répare seule.
+# Démarrage : docker compose up -d --build     (Compose charge .env automatiquement ; voir scripts/gen_secrets.sh)
+# Profils   : (défaut) plateforme + supervision | ai = assistant local | lab = trafic normal + attaquant interne | setup = modèles IA
+name: immune
+
+x-logging: &logging
+  logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
+x-secure: &secure
+  <<: *logging
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  read_only: true
+  restart: unless-stopped
+  tmpfs: [/tmp]
+  pids_limit: 256
+
+networks:
+  edge:     {}                    # seul réseau avec sortie internet et ports publiés
+  internal: { internal: true }    # métier : waf, web, api, auth, db, remediator
+  obs:      { internal: true }    # observabilité : prometheus, loki, promtail, grafana
+  control:  { internal: true }    # plan de contrôle : detector, remediator, actuator, dashboard
+  assist:   { internal: true }    # assistant IA : sans route vers la base ni vers l'actionneur
+  logs:     { internal: true }    # lecture des journaux Docker : promtail <-> docker-ro uniquement
+  ai-egress: {}
+volumes: { pgdata: {}, lokidata: {}, promdata: {}, grafdata: {}, detdata: {}, remdata: {}, olladata: {}, chromadata: {} }
+
+services:
+  # ---------- PEAU : seul point d'entrée exposé (hotspot) ----------
+  waf:
+    <<: *secure
+    image: nginxinc/nginx-unprivileged:1.27-alpine
+    container_name: immune-waf
+    ports: ["8080:8080"]
+    volumes:
+      - ./waf/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./waf/proxy.conf:/etc/nginx/proxy.conf:ro
+      - ./waf/rules:/etc/nginx/rules:ro             # écrit par le moteur de remédiation (lui seul)
+    networks: [edge, internal]
+    mem_limit: 256m
+    healthcheck: { test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/waf-health"], interval: 10s, timeout: 3s, retries: 3 }
+
+  web:                              # interface de paiement PayAlpha (fichiers statiques), jointe uniquement via le WAF
+    <<: *secure
+    build: ./web
+    container_name: immune-web
+    networks: [internal]
+    mem_limit: 128m
+    healthcheck: { test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"], interval: 10s, timeout: 3s, retries: 3 }
+
+  # ---------- ORGANES : métier ----------
+  db:
+    image: postgres:16-alpine
+    container_name: immune-db
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    <<: *logging
+    environment:
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?secrets absents, lancez d'abord ./scripts/gen_secrets.sh (ou scripts\\windows\\gen_secrets.ps1)}"
+      POSTGRES_DB: payments
+      API_DB_PASSWORD: ${API_DB_PASSWORD:?}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:?}
+    command: ["postgres", "-c", "log_connections=on", "-c", "log_disconnections=on", "-c", "password_encryption=scram-sha-256"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sh:/docker-entrypoint-initdb.d/00-init.sh:ro
+    networks: [internal]
+    mem_limit: 512m
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U postgres -d payments"], interval: 5s, timeout: 3s, retries: 10 }
+
+  api:
+    <<: *secure
+    build: ./api
+    container_name: immune-api
+    environment:
+      API_DB_PASSWORD: ${API_DB_PASSWORD:?}
+      JWT_SECRET: ${JWT_SECRET:?}
+      DB_POOL: "8"
+      EXPECTED_TOTAL: "600000"        # invariant comptable : 6 comptes x 100 000
+    networks: [internal, obs]
+    mem_limit: 384m
+    depends_on: { db: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  auth:
+    <<: *secure
+    build: ./auth
+    container_name: immune-auth
+    environment:
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:?}
+      JWT_SECRET: ${JWT_SECRET:?}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?}
+      WEAK_PASSWORD: ${WEAK_PASSWORD:?}
+      ATTACKER_PASSWORD: ${ATTACKER_PASSWORD:?}
+      PROBE_PASSWORD: ${PROBE_PASSWORD:?}
+    networks: [internal, obs]
+    mem_limit: 384m
+    depends_on: { db: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8001/metrics',timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # ---------- CERVEAU : décision ----------
+  remediator:
+    <<: *secure
+    build: ./remediator
+    container_name: immune-remediator
+    environment:
+      EVENT_HMAC_KEY: ${EVENT_HMAC_KEY:?}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?}
+      ACTUATOR_TOKEN: ${ACTUATOR_TOKEN:?}
+      PROBE_PASSWORD: ${PROBE_PASSWORD:?}
+      TRUST_SOURCE_IP: ${TRUST_SOURCE_IP:-false}
+      NEVER_BAN: ${NEVER_BAN:-}
+    volumes:
+      - ./waf/rules:/rules                          # seul droit d'écriture : les règles du WAF
+      - remdata:/data
+    networks: [internal, obs, control, assist]      # « assist » : uniquement pour que l'assistant lise GET /state
+    mem_limit: 256m
+    depends_on: [actuator]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:9000/health',timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ---------- MUSCLE : seul détenteur du socket Docker, 3 services redémarrables + rechargement du WAF ----------
+  actuator:
+    <<: *secure
+    build: ./actuator
+    container_name: immune-actuator
+    user: "0"
+    environment:
+      ACTUATOR_TOKEN: ${ACTUATOR_TOKEN:?}
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+    networks: [control]
+    mem_limit: 128m
+
+  # ---------- GLOBULES BLANCS : détection ML + règles SIEM ----------
+  detector:
+    <<: *secure
+    build: ./detector
+    container_name: immune-detector
+    environment:
+      EVENT_HMAC_KEY: ${EVENT_HMAC_KEY:?}
+      REMEDIATOR_URL: http://remediator:9000
+      PROM_URL: http://prometheus:9090
+      LOKI_URL: http://loki:3100
+    volumes: [detdata:/data]
+    networks: [obs, control]
+    mem_limit: 512m
+    depends_on: [loki, prometheus, remediator]
+
+  # ---------- CIRCULATION : observabilité ----------
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: immune-prometheus
+    restart: unless-stopped
+    <<: *logging
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=24h"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    networks: [obs]
+    mem_limit: 512m
+
+  loki:
+    image: grafana/loki:3.2.0
+    container_name: immune-loki
+    restart: unless-stopped
+    <<: *logging
+    command: ["-config.file=/etc/loki/config.yml"]
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/config.yml:ro
+      - lokidata:/loki
+    networks: [obs]
+    mem_limit: 768m
+
+  docker-ro:                        # lecture seule des journaux pour promtail : GET uniquement, réseau dédié
+    image: tecnativa/docker-socket-proxy:0.3.0
+    container_name: immune-docker-ro
+    restart: unless-stopped
+    <<: *logging
+    environment: { CONTAINERS: "1", VERSION: "1", POST: "0" }
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock:ro"]
+    networks: [logs]
+    mem_limit: 64m
+
+  promtail:
+    image: grafana/promtail:3.2.0
+    container_name: immune-promtail
+    restart: unless-stopped
+    <<: *logging
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes: ["./monitoring/promtail.yml:/etc/promtail/config.yml:ro"]
+    networks: [obs, logs]
+    mem_limit: 256m
+    depends_on: [loki, docker-ro]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: immune-grafana
+    restart: unless-stopped
+    <<: *logging
+    ports: ["127.0.0.1:3001:3000"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - grafdata:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks: [edge, obs]
+    mem_limit: 384m
+
+  # ---------- Console de supervision pour le jury (localhost uniquement) ----------
+  dashboard:
+    <<: *secure
+    build: ./dashboard
+    container_name: immune-dashboard
+    ports: ["127.0.0.1:3000:8080"]
+    networks: [edge, control]
+    mem_limit: 128m
+
+  # ---------- CERVEAU CONSCIENT : assistant local (profil « ai »), lecture seule, isolé du plan de contrôle ----------
+  ollama:
+    image: ollama/ollama:0.3.12
+    container_name: immune-ollama
+    profiles: [ai]
+    restart: unless-stopped
+    <<: *logging
+    volumes: [olladata:/root/.ollama]
+    networks: [assist, ai-egress]
+    mem_limit: 6g                   # à ajuster selon le PC hôte / PC de délestage IA (modèles <= 8 Md de paramètres)
+
+  assistant:
+    <<: *secure
+    profiles: [ai]
+    build: { context: ., dockerfile: assistant/Dockerfile }
+    container_name: immune-assistant
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-qwen2.5:3b-instruct}
+      EMBED_MODEL: ${ASSISTANT_EMBED_MODEL:-nomic-embed-text}
+      REMEDIATOR_STATE_URL: http://remediator:9000/state
+    volumes: [chromadata:/data]
+    networks: [assist]              # ni « internal » ni « control » : aucun chemin vers l'actionneur ou la base
+    mem_limit: 1g
+    depends_on: [ollama]
+
+  assistant-ui:
+    <<: *secure
+    profiles: [ai]
+    build: ./assistant/ui
+    container_name: immune-assistant-ui
+    ports: ["127.0.0.1:3002:8080"]
+    networks: [edge, assist]
+    mem_limit: 64m
+
+  ollama-pull:                      # une seule fois, AVEC internet (réseau « edge ») : docker compose run --rm ollama-pull
+    profiles: [setup]
+    image: ollama/ollama:0.3.12
+    container_name: immune-ollama-pull
+    <<: *logging
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["ollama serve >/dev/null 2>&1 & pid=$$!; sleep 6; ollama pull nomic-embed-text && ollama pull ${ASSISTANT_CHAT_MODEL:-qwen2.5:3b-instruct}; kill $$pid"]
+    volumes: [olladata:/root/.ollama]
+    networks: [edge]
+
+  # ---------- LABORATOIRE (profil « lab ») : trafic normal et attaquant interne, pour entraîner/mesurer ----------
+  traffic:
+    <<: *secure
+    profiles: [lab]
+    build: ./traffic
+    container_name: immune-traffic
+    restart: "no"
+    environment:
+      TARGET: http://waf:8080
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?}
+      WEAK_PASSWORD: ${WEAK_PASSWORD:?}
+      RPS: ${TRAFFIC_RPS:-4}
+    networks: [internal]
+    mem_limit: 128m
+    depends_on: [waf]
+
+  attacker:
+    <<: *secure
+    profiles: [lab]
+    build: ./attacker
+    container_name: immune-attacker
+    restart: "no"
+    environment:
+      TARGET: http://waf:8080
+      ATTACKER_PASSWORD: ${ATTACKER_PASSWORD:?}
+    networks: [internal]
+    mem_limit: 256m
+    depends_on: [waf]
