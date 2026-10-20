@@ -26,9 +26,13 @@ dashboard ou `GET /state` :
 | 5 | | | | |
 
 ## 2. Brute-force sur la connexion
-Lancer un outil de brute-force (voir `attacker/README.md`) contre `carol` pendant que la plateforme
-tourne, répéter 5 fois. Même tableau que ci-dessus, en notant en plus si le compte a été verrouillé
-avant ou après une connexion réussie (confinement de compromission, voir `echelle-actions.md`).
+```
+python attacker/bruteforce.py --target http://10.136.206.89:8080 --threads 8 --seconds 60
+```
+(ou tout autre outil, voir `attacker/README.md` pour un exemple Hydra). Répéter 5 fois pendant que la
+plateforme tourne. Même tableau que ci-dessus, en notant en plus si le compte a été verrouillé avant ou
+après une connexion réussie (confinement de compromission, voir `echelle-actions.md` — pour forcer ce
+cas en répétable : `--real-password "$WEAK_PASSWORD" --succeed-after 40`).
 
 ## 3. Injection (bonus)
 ```
@@ -52,10 +56,12 @@ Répéter pour `api`, `auth`, `db`. Relever le temps de détection et de redéma
 ## 5. Non-régression automatisée
 ```
 python3 tests/smoke.py --target http://localhost:8080
-python3 tests/e2e_demo.py --attacker-password "$(sed -n 's/^ATTACKER_PASSWORD=//p' .env)"
+python3 tests/e2e_demo.py --attacker-password "$(sed -n 's/^ATTACKER_PASSWORD=//p' .env)"   # flood
+python3 tests/e2e_bruteforce.py                                                              # brute-force
 ```
-`e2e_demo.py` échoue (code non nul) si le système n'atteint pas `RESTORED` sans intervention humaine
-dans le délai imparti — c'est le test qui protège l'axe « remédiation autonome » de la grille du jury.
+Les deux `e2e_*` échouent (code non nul) si le système n'atteint pas `RESTORED` sans intervention
+humaine dans le délai imparti — ce sont les tests qui protègent l'axe « remédiation autonome » de la
+grille du jury, un par type d'attaque.
 
 ## Synthèse à reporter dans le Dossier.pdf
 - RTO observé = moyenne des MTTR mesurés ci-dessus, par scénario.

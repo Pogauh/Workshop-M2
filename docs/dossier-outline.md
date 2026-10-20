@@ -9,7 +9,8 @@
    Illustrer avec les graphiques « signes vitaux » du dashboard (captures d'écran).
 4. **Détection (IA/Data)** (1–1½ page) — caractéristiques utilisées, choix IsolationForest + seuil,
    évaluation réelle (`detector/model/report.json` : taux de faux positifs, rappel par attaque, délai
-   de détection). Chiffres réels obligatoires — voir `docs/tests-chaos.md`.
+   de détection). Chiffres réels obligatoires — voir `docs/tests-chaos.md` et `docs/ml.md` (méthode,
+   balayage des volumes d'entraînement, limites).
 5. **Sécurité et cyber** (1 page) — WAF, SIEM (règles R1–R5), gestion des secrets (`.env` local,
    jamais commité), EBIOS RM (synthèse, renvoi vers `docs/ebios-rm.md`).
 6. **Continuité et transformation** (1 page) — PCA/PRA, RTO/RPO mesurés, NIS2/DORA

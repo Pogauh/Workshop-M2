@@ -100,7 +100,9 @@ class Model(unittest.TestCase):
 
     def test_debounce_helpers(self):
         self.assertEqual(runs_of([1, 1, 0, 1, 1, 1, 1], 3), 2)
-        self.assertEqual(first_detection_s([0, 1, 1, 1], 3), 20); self.assertIsNone(first_detection_s([1, 0, 1], 3))
+        self.assertEqual(first_detection_s([0, 1, 1, 1], 3), 4)          # every=model.EVERY=1s par défaut
+        self.assertEqual(first_detection_s([0, 1, 1, 1], 3, every=5), 20)  # `every` explicite toujours honoré
+        self.assertIsNone(first_detection_s([1, 0, 1], 3))
 
 
 if __name__ == "__main__":

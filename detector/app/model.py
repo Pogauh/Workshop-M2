@@ -10,6 +10,8 @@ import numpy as np
 FEATURES = ["rps", "rps_max_user", "p95_ms", "err5xx_ratio", "waf_block_ratio", "inflight", "login_rps", "login_fail_rate"]
 UP_Z = 2.0            # au moins une observation à +2 écarts-types (après log1p) au-dessus de la normale
 MODEL_PATHS = ["/data/model.joblib", "/app/model/model.joblib"]
+EVERY = 1              # secondes entre deux observations : SOURCE UNIQUE, utilisée par main.py (détection live),
+                        # collect.py (collecte d'entraînement, même cadence) et train.py (conversion en secondes)
 
 
 def prep(X):

@@ -7,9 +7,12 @@ Durée : jusqu'à ~3 minutes (attaque 30 s + fenêtre de vérification)."""
 import argparse, subprocess, sys, time
 import httpx
 
+PY = sys.executable  # l'exact interpréteur courant : "python3" n'existe pas forcément (ex. Windows)
+
 ap = argparse.ArgumentParser()
 ap.add_argument("--target", default="http://localhost:8080")
-ap.add_argument("--state-url", default="http://localhost:9000/state", help="port du moteur publié localement pour ce test")
+ap.add_argument("--state-url", default="http://localhost:3000/state",
+                 help="le moteur n'a pas de port publié (voir architecture.md) : on relit son état via le proxy /state du dashboard")
 ap.add_argument("--attacker-password", required=True)
 ap.add_argument("--attack-seconds", type=int, default=30)
 ap.add_argument("--timeout", type=int, default=150)
@@ -23,7 +26,7 @@ def state():
 def main():
     print("État initial :", state()["state"])
     print(f"Lancement de l'attaque ({a.attack_seconds} s)...")
-    proc = subprocess.Popen(["python3", "attacker/flood.py", "--target", a.target, "--password", a.attacker_password,
+    proc = subprocess.Popen([PY, "attacker/flood.py", "--target", a.target, "--password", a.attacker_password,
                              "--seconds", str(a.attack_seconds), "--threads", "40"])
 
     deadline = time.time() + a.timeout
@@ -33,8 +36,12 @@ def main():
         if s["state"] in ("IMMUNITY", "REGENERATION", "RESTORED"):
             seen_defense = True
         if s["state"] == "RESTORED" and not s.get("busy"):
-            proc.wait(timeout=5)
             mttr = s.get("last_mttr")
+            proc.terminate()                        # la remédiation peut être plus rapide que la durée d'attaque restante
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
             print(f"RÉTABLI sans intervention humaine. MTTR mesuré : {mttr} s")
             sys.exit(0)
         if s["state"] == "ESCALATION":

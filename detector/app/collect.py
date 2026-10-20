@@ -2,12 +2,12 @@
 Étiquettes : normal | flood | brute  (un trafic correspondant tourne pendant ce temps : voir scripts/bootstrap_model.sh)."""
 import argparse, csv, os, time
 from .features import sample
-from .model import FEATURES
+from .model import EVERY, FEATURES
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--label", required=True, choices=["normal", "flood", "brute"])
 ap.add_argument("--minutes", type=float, default=8)
-ap.add_argument("--every", type=float, default=5)
+ap.add_argument("--every", type=float, default=EVERY)   # même cadence que la détection live (model.EVERY) par défaut
 a = ap.parse_args()
 path = f"/data/{a.label}.csv"
 new = not os.path.exists(path)

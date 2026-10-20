@@ -6,9 +6,7 @@ import numpy as np
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 
-from .model import FEATURES, flags, prep
-
-EVERY = 5   # secondes entre deux observations (voir collect.py)
+from .model import EVERY, FEATURES, flags, prep
 
 
 def load_csv(path, features=FEATURES):
@@ -25,16 +23,18 @@ def runs_of(flag, k=3):
     return n
 
 
-def first_detection_s(flag, k=3):
+def first_detection_s(flag, k=3, every=EVERY):
+    """`every` DOIT correspondre à la cadence réelle de collecte des lignes de `flag` (voir model.EVERY) :
+    sinon le délai annoncé ne correspond pas à ce qu'observerait le détecteur en production."""
     c = 0
     for i, f in enumerate(flag):
         c = c + 1 if f else 0
         if c >= k:
-            return (i + 1) * EVERY
+            return (i + 1) * every
     return None
 
 
-def train(normal, attacks=None, features=FEATURES, seed=42):
+def train(normal, attacks=None, features=FEATURES, seed=42, every=EVERY):
     attacks = attacks or {}
     cut = int(len(normal) * 0.75)
     tr, te = normal[:cut], normal[cut:]
@@ -46,11 +46,12 @@ def train(normal, attacks=None, features=FEATURES, seed=42):
               "trained_at": time.strftime("%Y-%m-%d %H:%M:%S"), "version": 2}
     _, fte = flags(bundle, te)
     rep = {"features": list(features), "n_train": int(len(tr)), "n_normal_test": int(len(te)), "threshold": thr,
+           "sample_every_s": every,
            "false_positive_rate": float(fte.mean()) if len(te) else None,
            "false_alerts_after_debounce_k3": int(runs_of(fte)), "attacks": {}}
     for name, A in attacks.items():
         _, fa = flags(bundle, A)
-        rep["attacks"][name] = {"n": int(len(A)), "recall": float(fa.mean()), "detected_after_s": first_detection_s(fa)}
+        rep["attacks"][name] = {"n": int(len(A)), "recall": float(fa.mean()), "detected_after_s": first_detection_s(fa, every=every)}
     return bundle, rep
 
 

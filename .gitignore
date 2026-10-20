@@ -11,9 +11,9 @@ dist/
 __pycache__/
 *.pyc
 *.csv
-!attacker/wordlist.txt
-detector/model/*.joblib
-!detector/model/.keep
+# detector/model/*.joblib : INTENTIONNELLEMENT PAS ignoré — le modèle entraîné est livré avec le dépôt
+# (voir detector/model/README.md et scripts/export_model.sh) : scripts/package.sh construit Code.zip à
+# partir de `git ls-files`, un modèle non suivi par Git serait absent du livrable.
 backups/*.sql*
 *.zip
 *.mp4

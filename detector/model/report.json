@@ -1,0 +1,33 @@
+{
+  "features": [
+    "rps",
+    "rps_max_user",
+    "p95_ms",
+    "err5xx_ratio",
+    "waf_block_ratio",
+    "inflight",
+    "login_rps",
+    "login_fail_rate"
+  ],
+  "n_train": 2181,
+  "n_normal_test": 728,
+  "threshold": -0.16194471800476104,
+  "sample_every_s": 1,
+  "false_positive_rate": 0.0,
+  "false_alerts_after_debounce_k3": 0,
+  "attacks": {
+    "flood": {
+      "n": 333,
+      "recall": 1.0,
+      "detected_after_s": 3
+    },
+    "brute": {
+      "n": 335,
+      "recall": 1.0,
+      "detected_after_s": 3
+    }
+  },
+  "n_rows_normal": 2909,
+  "fit_seconds": 1.1363,
+  "score": 1.0
+}

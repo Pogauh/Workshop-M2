@@ -9,7 +9,7 @@ from . import features, model, siem
 
 KEY = os.environ["EVENT_HMAC_KEY"].encode()
 URL = os.getenv("REMEDIATOR_URL", "http://remediator:9000") + "/event"
-EVERY, K = 5, 3                               # une observation / 5 s ; 3 fenêtres anormales consécutives = anomalie qualifiée
+EVERY, K = model.EVERY, 3                     # une observation / EVERY s ; 3 fenêtres anormales consécutives = anomalie qualifiée
 THR = {"min_rps": float(os.getenv("SUSPECT_MIN_RPS", "30"))}
 SCORE = Gauge("anomaly_score", "score IsolationForest (plus bas = plus anormal)")
 FLAG = Gauge("anomaly_flag", "1 si la fenêtre est anormale")

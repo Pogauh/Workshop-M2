@@ -22,7 +22,6 @@ networks:
   control:  { internal: true }    # plan de contrôle : detector, remediator, actuator, dashboard
   assist:   { internal: true }    # assistant IA : sans route vers la base ni vers l'actionneur
   logs:     { internal: true }    # lecture des journaux Docker : promtail <-> docker-ro uniquement
-  ai-egress: {}
 volumes: { pgdata: {}, lokidata: {}, promdata: {}, grafdata: {}, detdata: {}, remdata: {}, olladata: {}, chromadata: {} }
 
 services:
@@ -226,7 +225,7 @@ services:
     <<: *secure
     build: ./dashboard
     container_name: immune-dashboard
-    ports: ["127.0.0.1:3000:8080"]
+    ports: ["127.0.0.1:3000:8080"]    # jury sur le PC Hôte uniquement (voir README) ; jamais exposé au hotspot
     networks: [edge, control]
     mem_limit: 128m
 
@@ -238,8 +237,8 @@ services:
     restart: unless-stopped
     <<: *logging
     volumes: [olladata:/root/.ollama]
-    networks: [assist, ai-egress]
-    mem_limit: 6g                   # à ajuster selon le PC hôte / PC de délestage IA (modèles <= 8 Md de paramètres)
+    networks: [assist]              # pas de sortie internet : les modèles sont téléchargés une fois par « ollama-pull » (profil setup, réseau edge)
+    mem_limit: 5g                   # à ajuster selon le PC hôte / PC de délestage IA (modèles <= 8 Md de paramètres)
 
   assistant:
     <<: *secure

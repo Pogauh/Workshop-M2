@@ -1,0 +1,13 @@
+# Surcouche OPTIONNELLE : accélère l'assistant local (Ollama) avec le GPU NVIDIA de CETTE machine de dev.
+# Ne pas utiliser pour la soutenance si le PC Hôte n'a pas de GPU NVIDIA + Docker Desktop configuré pour
+# (Settings > Resources > GPU support côté Windows) : docker-compose.yml seul reste 100% portable (CPU).
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml --profile ai up -d
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

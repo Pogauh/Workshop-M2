@@ -37,11 +37,22 @@ Soldes de départ : 100 000 chacun, invariant total **600 000** vérifié par `/
 
 ## Entraîner le détecteur ML
 ```bash
-./scripts/bootstrap_model.sh              # trafic normal + flood + brute-force, entraîne et évalue (~20 min)
-./scripts/export_model.sh                 # embarque le modèle dans detector/model/ pour le livrable
+./scripts/bootstrap_model.sh              # défaut rapide : trafic normal (~480 lignes) + flood + brute-force (~10 min)
+./scripts/bootstrap_model.sh 52 6 6       # gros volume : ~3000+ lignes normales (~65 min, voir ci-dessous)
+./scripts/export_model.sh                 # embarque le modèle retenu dans detector/model/ pour le livrable
 ```
-Le rapport (`detector/model/report.json`) donne le taux de faux positifs et le rappel par type
-d'attaque — à joindre au Dossier.pdf (section IA/Data, voir `docs/dossier-outline.md`).
+La brute-force est **automatique** (`attacker/bruteforce.py`, inclus dans le dépôt — aucun outil externe
+requis) ; `MANUAL_BRUTE=1 ./scripts/bootstrap_model.sh ...` bascule sur la procédure manuelle (second PC +
+Hydra ou autre, voir `attacker/README.md`) si vous préférez rejouer l'entraînement avec une vraie attaque
+externe. La cadence de collecte (1 ligne/s) correspond à celle de la détection live (`detector/app/model.py`
+: `EVERY`) : ne changez pas l'une sans l'autre.
+
+L'entraînement teste **plusieurs volumes de lignes normales** (`detector/app/train_sweep.py`, 400 à 3000+
+par défaut, bornés à ce qui a été collecté) et retient automatiquement le plus performant sur la machine
+(meilleur rappel par attaque, au taux de faux positifs le plus bas). Le rapport du modèle retenu
+(`detector/model/report.json`) donne le taux de faux positifs et le rappel par type d'attaque — à joindre
+au Dossier.pdf (section IA/Data, voir `docs/dossier-outline.md`) ; le comparatif complet des volumes
+testés est dans `detector/model/sweep.json`.
 
 ## Les trois scénarios d'attaque
 1. **Surcharge applicative** (`attacker/flood.py`) — compte `attacker`, charge soutenue sur les
@@ -105,10 +116,18 @@ pour l'absence volontaire de réentraînement automatique.
 Si le PC Hôte est sous forte charge mémoire, déportez `ollama` sur le PC de délestage IA optionnel :
 changez `OLLAMA_URL` vers l'IP de ce poste et lancez-y uniquement le conteneur `ollama`.
 
+Inférence CPU par défaut (portable, ~20-30 s/réponse selon la machine). Si le PC Hôte a un GPU NVIDIA
+avec le support GPU activé dans Docker Desktop, `docker-compose.gpu.yml` accélère l'assistant (~2-4x
+observé) sans toucher au fichier principal :
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml --profile ai up -d
+```
+
 ## Vérifications avant livraison
 ```bash
 python3 tests/smoke.py                 # plateforme démarrée : chemin nominal
-python3 tests/e2e_demo.py --attacker-password "$(sed -n 's/^ATTACKER_PASSWORD=//p' .env)"
+python3 tests/e2e_demo.py --attacker-password "$(sed -n 's/^ATTACKER_PASSWORD=//p' .env)"   # scénario flood
+python3 tests/e2e_bruteforce.py                                                              # scénario brute-force
 ./scripts/check_secrets.sh
 ./scripts/package.sh G<n>              # construit Workshop2026-M2-G<n>-Code.zip sans secrets
 ```
