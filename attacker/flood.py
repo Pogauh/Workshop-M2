@@ -5,7 +5,7 @@ import argparse, time, threading, itertools, sys
 import httpx
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--target", default="http://192.168.137.1:8080")
+ap.add_argument("--target", default="http://10.136.206.89:8080")
 ap.add_argument("--user", default="attacker"); ap.add_argument("--password", required=True)
 ap.add_argument("--threads", type=int, default=40); ap.add_argument("--seconds", type=int, default=90)
 a = ap.parse_args()

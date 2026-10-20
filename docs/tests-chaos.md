@@ -32,7 +32,7 @@ avant ou après une connexion réussie (confinement de compromission, voir `eche
 
 ## 3. Injection (bonus)
 ```
-python attacker/sqli_probe.py --target http://192.168.137.1:8080
+python attacker/sqli_probe.py --target http://10.136.206.89:8080
 ```
 Vérifier que les 4 charges utiles reçoivent un `403` (bloquées par le WAF, jamais par l'API).
 

@@ -8,7 +8,7 @@ sans intervention humaine sur le chemin nominal. Voir `docs/architecture.md` pou
 Windows 10/11, Docker Desktop (backend WSL2 recommandé), 16 Go RAM minimum (10 Go alloués à WSL2, voir
 `.wslconfig.example`), 50 Go libres. Rien d'autre à installer pour les secrets : un `.env` local
 généré par script (voir `docs/secrets.md`). Hotspot Windows nommé `RESILIENCE-G<n>`, IP du PC Hôte
-`192.168.137.1`. Détail pas à pas : `docs/windows-setup.md`.
+`10.136.206.89`. Détail pas à pas : `docs/windows-setup.md`.
 
 ## Démarrage
 ```bash

@@ -26,10 +26,10 @@ scripts\windows\firewall.ps1 -Subnet 192.168.137.0/24
 
 ## Adresse IP du PC Hôte sur le hotspot
 ```
-ipconfig                      # repérez l'adresse du point d'accès RESILIENCE-G<n>, ex. 192.168.137.1
+ipconfig                      # repérez l'adresse du point d'accès RESILIENCE-G<n>, ex. 10.136.206.89
 ```
 Utilisée par `attacker/flood.py --target http://<cette-adresse>:8080` et dans les commandes de ce
-dépôt qui mentionnent `192.168.137.1`.
+dépôt qui mentionnent `10.136.206.89`.
 
 ## Problèmes fréquents
 - **Docker Desktop lent / mémoire saturée** : réduisez le nombre de services démarrés (évitez le

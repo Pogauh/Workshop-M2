@@ -21,7 +21,7 @@ class Config:
         self.pay_default, self.pay_throttled = 60, 10            # req/s par jeton (zone WAF « pay »)
         self.login_default, self.login_throttled = 100, 5        # req/s par IP (zone WAF « login »)
         self.trust_ip = False                                    # False sous Docker Desktop (NAT) : pas d'actions par IP
-        self.never_ban = {"127.0.0.1", "192.168.137.1"}
+        self.never_ban = {"127.0.0.1", "10.136.206.89"}
         self.protected_users = {"probe", "merchant"}
         self.max_actions, self.window = 6, 600                   # anti-boucle : 6 actions / 10 min
         self.restart_per_window = 2                              # 2 redémarrages par service / 10 min
@@ -39,7 +39,7 @@ class Config:
         return cls(pay_default=int(g("PAY_RATE_DEFAULT", 60)), pay_throttled=int(g("PAY_RATE_THROTTLED", 10)),
                    login_default=int(g("LOGIN_RATE_DEFAULT", 100)), login_throttled=int(g("LOGIN_RATE_THROTTLED", 5)),
                    trust_ip=g("TRUST_SOURCE_IP", "false").lower() == "true",
-                   never_ban={"127.0.0.1", "192.168.137.1"} | {x for x in g("NEVER_BAN", "").split(",") if x},
+                   never_ban={"127.0.0.1", "10.136.206.89"} | {x for x in g("NEVER_BAN", "").split(",") if x},
                    relax_after=int(g("RELAX_AFTER", 120)), lock_seconds=int(g("LOCK_SECONDS", 180)))
 
 

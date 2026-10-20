@@ -1,6 +1,6 @@
 # API — référence rapide
 
-Toutes les routes passent par le WAF (`http://192.168.137.1:8080` en démonstration,
+Toutes les routes passent par le WAF (`http://10.136.206.89:8080` en démonstration,
 `http://localhost:8080` en local). Les routes `/internal/*` (authentification) et `/api/health/deep`
 (API) ne sont jamais routées par le WAF : elles ne sont joignables que depuis le réseau interne, par
 le moteur de remédiation.

@@ -19,7 +19,7 @@ prise, répétée jusqu'à être fluide — `scripts/repeat_demo.sh` sert justem
 ## Checklist avant la prise
 - [ ] `./scripts/reset.sh` juste avant (état `HOMEOSTASIS` propre).
 - [ ] Modèle ML déjà entraîné (`scripts/bootstrap_model.sh` fait au préalable, pas pendant la vidéo).
-- [ ] Fenêtre du dashboard (`localhost:3000`) et de l'interface PayAlpha (`192.168.137.1:8080`) prêtes
+- [ ] Fenêtre du dashboard (`localhost:3000`) et de l'interface PayAlpha (`10.136.206.89:8080`) prêtes
       côte à côte ou en bascule rapide.
 - [ ] Minuteur affiché à l'écran si l'outil de capture ne l'incruste pas.
 - [ ] Volume/micro coupé ou commentaire préparé à l'avance (pas d'improvisation sous 60 s).
