@@ -31,6 +31,7 @@ construit, démarre, attend que l'API réponde).
 | `carol` | Mot de passe volontairement faible (scénario brute-force) | `WEAK_PASSWORD` |
 | `attacker` | Compte client valide utilisé pour le scénario de surcharge | `ATTACKER_PASSWORD` |
 | `probe` | Sonde de santé interne (jamais suspendu ni banni) | `PROBE_PASSWORD` |
+| `manager` | Back-office : caméra + reconnaissance faciale obligatoire avant le mot de passe | `MANAGER_PASSWORD` |
 
 `sed -n 's/^<NOM_DE_VARIABLE>=//p' .env` affiche une valeur précise (ex. pour le PC Attaquant).
 Soldes de départ : 100 000 chacun, invariant total **600 000** vérifié par `/api/health/deep`.
@@ -65,6 +66,25 @@ testés est dans `detector/model/sweep.json`.
 Répéter rapidement un scénario pour la vidéo chronométrée : `./scripts/repeat_demo.sh dos` (ou
 `brute`). Réinitialiser entre deux essais : `./scripts/reset.sh`.
 
+## Authentification renforcée du back-office (consigne additionnelle 1)
+Caméra USB + IA de reconnaissance faciale + badge ESP8266 à LED bicolore, sur le compte `manager`
+uniquement (voir `docs/face-auth.md` pour le flux complet et le choix de n'affecter que ce compte).
+```bash
+docker compose up -d face         # inclus par défaut (pas de profil dédié) ; déjà démarré par `up -d`
+```
+1. Flasher le badge : `esp8266/README.md` (IDE imposé : JetBrains CLion + PlatformIO). Schéma de
+   câblage détaillé : `docs/esp8266-wiring.md`.
+2. Se connecter sur `http://localhost:8080` avec `manager` : la caméra s'active automatiquement après
+   l'identifiant. **Premier accès** : aucun visage n'est encore enregistré, la connexion passe au mot
+   de passe seul (amorçage, voir `docs/face-auth.md`) — enregistrez ensuite un visage réel depuis la
+   console back-office (« Gestion des habilitations », 5 photos).
+3. Le seuil de reconnaissance livré (`face/app/recognizer.py`) n'est **pas calibré sur de vrais
+   visages** (aucune photo réelle disponible lors du développement) : à ajuster avant la démonstration
+   selon le taux de faux rejets/acceptations observé avec l'opérateur réel.
+
+Badge non branché ou IA non calibrée : l'authentification continue de fonctionner (amorçage, ou LED en
+best-effort) — voir `docs/face-auth.md`, §Badge ESP8266, pour le détail de cette dégradation gracieuse.
+
 ## Panne franche (sans attaque)
 ```bash
 ansible-playbook ansible/chaos.yml                       # tue un service au hasard
@@ -92,6 +112,8 @@ detector/         -> IA/Data (détection ML + règles SIEM)
 remediator/       -> développement + cybersécurité (décision, échelles d'actions, vérification)
 actuator/         -> cybersécurité (seul composant avec le socket Docker, actions en liste blanche)
 dashboard/        -> développement (supervision « signes vitaux » pour le jury)
+face/             -> IA/Data + cybersécurité (reconnaissance faciale, consigne additionnelle 1)
+esp8266/          -> cybersécurité (firmware badge LED, PlatformIO/CLion, consigne additionnelle 1)
 monitoring/       -> infrastructure (Prometheus/Grafana/Loki)
 attacker/ traffic/ -> cybersécurité / IA-Data (scénarios et données d'entraînement)
 ansible/          -> infrastructure (déploiement, durcissement, sauvegarde, chaos engineering)

@@ -122,7 +122,7 @@ services:
     networks: [internal, edge]                   # internal : joignable par le WAF ; edge : atteindre le badge ESP8266 sur le hotspot
     mem_limit: 384m
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8600/health',timeout=2)"]
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8600/face/health',timeout=2)"]
       interval: 10s
       timeout: 3s
       retries: 3

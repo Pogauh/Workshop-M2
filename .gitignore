@@ -18,3 +18,4 @@ backups/*.sql*
 *.zip
 *.mp4
 .venv/
+.pio/

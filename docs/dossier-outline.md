@@ -12,7 +12,9 @@
    de détection). Chiffres réels obligatoires — voir `docs/tests-chaos.md` et `docs/ml.md` (méthode,
    balayage des volumes d'entraînement, limites).
 5. **Sécurité et cyber** (1 page) — WAF, SIEM (règles R1–R5), gestion des secrets (`.env` local,
-   jamais commité), EBIOS RM (synthèse, renvoi vers `docs/ebios-rm.md`).
+   jamais commité), EBIOS RM (synthèse, renvoi vers `docs/ebios-rm.md`). Mentionner l'authentification
+   renforcée du back-office (caméra + IA + badge ESP8266, consigne additionnelle 1) : renvoi vers
+   `docs/face-auth.md` et `docs/esp8266-wiring.md`, périmètre volontairement limité au compte `manager`.
 6. **Continuité et transformation** (1 page) — PCA/PRA, RTO/RPO mesurés, NIS2/DORA
    (`docs/nis2-dora.md`).
 7. **Mesures et résultats** (1–1½ page) — tableaux remplis de `docs/tests-chaos.md` : MTTR par

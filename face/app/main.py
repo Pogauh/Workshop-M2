@@ -4,11 +4,13 @@ Isolé : aucun accès à la base de paiements ni à l'actuator ; émet un billet
 `auth` sait vérifier (FACE_TICKET_KEY partagé, aucun appel réseau entre les deux services).
 
 Flux (voir docs/face-auth.md pour le détail complet) :
-  1. POST /verify   {username, image}         -> reconnu ? billet signé + LED verte clignotante
-                                                   non reconnu ? LED rouge fixe 30s, compte les échecs
+  1. POST /face/verify   {username, image}     -> reconnu ? billet signé + LED verte clignotante
+                                                    non reconnu ? LED rouge fixe 30s, compte les échecs
   2. (côté navigateur) saisie du mot de passe, POST /auth/login avec le billet
-  3. Gestion des habilitations (back-office, JWT requis) : /enroll, /enrollments, /enroll/{username}
-"""
+  3. Gestion des habilitations (back-office, JWT requis) : /face/enroll, /face/enrollments, /face/enroll/{username}
+
+Routes préfixées par /face (même convention que /api/ dans api/app/main.py) : le WAF (waf/nginx.conf,
+`location /face/`) transmet le chemin SANS le réécrire, contrairement à un reverse-proxy qui le retirerait."""
 import base64, os, time
 
 import jwt
@@ -63,7 +65,7 @@ class VerifyIn(BaseModel):
     image: str = Field(min_length=1)   # JPEG/PNG encodé en base64
 
 
-@app.post("/verify")
+@app.post("/face/verify")
 def verify(body: VerifyIn):
     # Réponse 200 avec `recognized:false` même en cas de verrou : le corps JSON porte toute l'information
     # (locked_until, retry_after_s) sans la nicher sous un `detail` d'erreur que le client ne lirait pas
@@ -112,7 +114,7 @@ class EnrollIn(BaseModel):
     images: list[str] = Field(min_length=MIN_ENROLL_IMAGES, max_length=20)
 
 
-@app.post("/enroll")
+@app.post("/face/enroll")
 def enroll(body: EnrollIn, authorization: str | None = Header(None)):
     _require_self_or_backoffice(authorization, body.username)
     faces = []
@@ -134,19 +136,19 @@ def enroll(body: EnrollIn, authorization: str | None = Header(None)):
     return {"ok": True, "username": body.username, "n_images": len(faces)}
 
 
-@app.get("/enrollments")
+@app.get("/face/enrollments")
 def enrollments(authorization: str | None = Header(None)):
     _require_backoffice(authorization)
     return store.list_enrollments()
 
 
-@app.get("/enroll/status")
+@app.get("/face/enroll/status")
 def enroll_status(username: str, authorization: str | None = Header(None)):
     _require_self_or_backoffice(authorization, username)
     return {"username": username, "enrolled": store.has_enrollment(username)}
 
 
-@app.delete("/enroll/{username}")
+@app.delete("/face/enroll/{username}")
 def unenroll(username: str, authorization: str | None = Header(None)):
     _require_self_or_backoffice(authorization, username)
     store.delete_enrollment(username)
@@ -154,7 +156,7 @@ def unenroll(username: str, authorization: str | None = Header(None)):
     return {"ok": True, "username": username}
 
 
-@app.post("/reset")
+@app.post("/face/reset")
 def reset_lockout(username: str, authorization: str | None = Header(None)):
     """Remise à zéro de laboratoire (voir scripts/reset.sh) : lève un blocage de reconnaissance en cours."""
     _require_backoffice(authorization)
@@ -162,6 +164,6 @@ def reset_lockout(username: str, authorization: str | None = Header(None)):
     return {"ok": True}
 
 
-@app.get("/health")
+@app.get("/face/health")
 def health():
     return {"status": "ok"}

@@ -12,17 +12,23 @@
 | Cicatrisation | Échelles graduées (voir `echelle-actions.md`) | Réparation graduée, la moins invasive d'abord |
 | Mémoire immunitaire | `remdata/incidents.jsonl` + historique dans `/state` | Journal d'incidents ; ne réentraîne jamais automatiquement le modèle |
 | Système nerveux conscient | `assistant` (RAG, Ollama local) | Aide à la compréhension, lecture seule, isolé du reste |
+| Sens (vision) | `face` + badge ESP8266 | Reconnaissance faciale + retour lumineux avant le mot de passe du back-office (consigne additionnelle 1, voir `docs/face-auth.md`) |
 
 ## Réseaux Docker (isolation = système lymphatique)
 
 | Réseau | Membres | Sortie internet |
 |---|---|---|
-| `edge` | waf, grafana, dashboard, assistant-ui | Oui (seul réseau non `internal`) |
-| `internal` | waf, web, api, auth, db, remediator | Non |
+| `edge` | waf, grafana, dashboard, assistant-ui, face, auth | Oui (seul réseau non `internal`) |
+| `internal` | waf, web, api, auth, db, remediator, face | Non |
 | `obs` | api, auth, remediator, detector, prometheus, loki, promtail, grafana | Non |
 | `control` | remediator, actuator, detector, dashboard | Non — **l'actuator n'est joignable que depuis ce réseau** |
 | `assist` | remediator (lecture de `/state` uniquement), ollama, assistant, assistant-ui | Non |
 | `logs` | promtail, docker-ro | Non — lecture seule du socket Docker, séparée du reste |
+
+`face` et `auth` rejoignent aussi `edge` : c'est le seul moyen d'atteindre le badge ESP8266, qui vit sur
+le réseau du hotspot (192.168.137.0/24), en dehors des réseaux Docker internes — même raison que
+`ollama-pull` pour le téléchargement des modèles IA. Un badge injoignable ne bloque jamais
+l'authentification (voir `docs/face-auth.md`, §Badge ESP8266).
 
 Seul le WAF publie un port sur le réseau du hotspot (`8080`) ; Grafana, le dashboard et l'assistant ne
 sont publiés que sur `127.0.0.1` (accès depuis le PC Hôte uniquement, pour le jury).
@@ -71,6 +77,15 @@ journaux du WAF n'a pas confirmé la fiabilité de l'adresse source dans l'envir
 - Palier de stabilisation (`hold = 30 s`) avant de redescendre en `HOMEOSTASIS`.
 - Relâchement automatique du débit et des bannissements après 2 minutes de calme confirmé.
 - Comptes protégés jamais suspendus ni bannis (`probe`, `merchant`).
+
+## Authentification renforcée du back-office (consigne additionnelle 1)
+
+Le compte `manager` (rôle `backoffice`, seul compte avec `face_required=true` en base) passe par une
+caméra USB + IA de reconnaissance faciale (OpenCV/LBPH, service `face`) avant de pouvoir saisir son mot
+de passe ; un badge ESP8266 à LED bicolore matérialise chaque étape. Détail complet (flux, schéma
+électrique, choix d'architecture, limites) : `docs/face-auth.md` et `docs/esp8266-wiring.md`. Les comptes
+du sujet initial (`alice`, `bob`, `carol`, `merchant`, `attacker`, `probe`) sont volontairement
+**inchangés** — voir `docs/face-auth.md`, §Pourquoi un compte dédié.
 
 ## Secrets
 
