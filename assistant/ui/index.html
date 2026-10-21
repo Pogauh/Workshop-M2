@@ -28,8 +28,16 @@ async function ask() {
   bubble('user', question); q.value = ''; const pending = bubble('bot', '…');
   try {
     const r = await fetch('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question }) });
-    const j = await r.json();
-    pending.textContent = r.ok ? j.answer + (j.sources?.length ? '\n\nSources : ' + j.sources.join(', ') : '') : 'Erreur : ' + (j.detail || r.status);
+    // La réponse peut ne pas être du JSON (ex. page d'erreur HTML du proxy si le modèle local met trop de
+    // temps à répondre) : on ne tente .json() qu'une fois, et on retombe sur un message clair sinon.
+    let j = null;
+    try { j = await r.json(); } catch { /* corps non-JSON, voir message ci-dessous */ }
+    if (r.ok && j) {
+      pending.textContent = j.answer + (j.sources?.length ? '\n\nSources : ' + j.sources.join(', ') : '');
+    } else {
+      pending.textContent = `Erreur ${r.status || ''} : ` + (j?.detail
+        || "le modèle local met trop de temps à répondre (démarrage à froid ?). Réessayez dans quelques secondes.");
+    }
   } catch (e) { pending.textContent = 'Erreur réseau : ' + e; }
 }
 document.getElementById('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
