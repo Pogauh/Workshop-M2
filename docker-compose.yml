@@ -225,7 +225,8 @@ services:
     <<: *secure
     build: ./dashboard
     container_name: immune-dashboard
-    ports: ["127.0.0.1:3000:8080"]    # jury sur le PC Hôte uniquement (voir README) ; jamais exposé au hotspot
+    ports:
+      - "3000:8080"
     networks: [edge, control]
     mem_limit: 128m
 
@@ -299,6 +300,6 @@ services:
     environment:
       TARGET: http://waf:8080
       ATTACKER_PASSWORD: ${ATTACKER_PASSWORD:?}
-    networks: [internal]
+    networks: [edge]
     mem_limit: 256m
-    depends_on: [waf]
+    # depends_on: [waf]
