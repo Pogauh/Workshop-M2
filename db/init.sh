@@ -11,7 +11,8 @@ CREATE TABLE users(
   suspended     boolean NOT NULL DEFAULT false,   -- décision du moteur de remédiation (confinement)
   locked_until  timestamptz,                      -- verrouillage temporaire (brute-force)
   revoked_after timestamptz,                      -- les jetons émis avant cette date sont refusés
-  must_reset    boolean NOT NULL DEFAULT false);  -- mot de passe à réinitialiser (compromission)
+  must_reset    boolean NOT NULL DEFAULT false,   -- mot de passe à réinitialiser (compromission)
+  face_required boolean NOT NULL DEFAULT false);  -- reconnaissance faciale obligatoire avant le mot de passe (consigne additionnelle 1)
 
 CREATE TABLE accounts(
   owner   text PRIMARY KEY,
@@ -29,13 +30,14 @@ CREATE UNIQUE INDEX payments_idem  ON payments(payer, idem_key) WHERE idem_key I
 CREATE INDEX        payments_payer ON payments(payer, created_at DESC);
 CREATE INDEX        payments_payee ON payments(payee, created_at DESC);
 
--- 6 comptes x 100000.00 = invariant 600000.00 (vérifié par /api/health/deep après chaque reprise)
+-- 6 comptes x 100000.00 = invariant 600000.00 (vérifié par /api/health/deep après chaque reprise).
+-- « manager » (back-office, consigne additionnelle 1) porte un solde nul : ne modifie pas l'invariant.
 INSERT INTO accounts VALUES
   ('alice',100000),('bob',100000),('carol',100000),
-  ('attacker',100000),('probe',100000),('merchant',100000);
+  ('attacker',100000),('probe',100000),('merchant',100000),('manager',0);
 
 CREATE ROLE api_user LOGIN PASSWORD '${API_DB_PASSWORD}';
-GRANT SELECT (username, display_name, suspended, revoked_after) ON users TO api_user;   -- jamais pw_hash
+GRANT SELECT (username, display_name, suspended, revoked_after, role) ON users TO api_user;   -- jamais pw_hash
 GRANT SELECT, UPDATE ON accounts TO api_user;
 GRANT SELECT, INSERT ON payments TO api_user;
 

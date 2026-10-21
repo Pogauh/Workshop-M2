@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient, explain } from './lib/api.js'
 import { eur } from './lib/format.js'
+import BackOffice from './components/BackOffice.jsx'
 import Composer from './components/Composer.jsx'
 import History from './components/History.jsx'
 import Icon from './components/Icons.jsx'
@@ -29,8 +30,8 @@ export default function App() {
   }), [logout])
   const health = useServiceHealth(api)
 
-  async function login(username, password) {
-    const { token } = await api.login(username, password)
+  async function login(username, password, faceTicket) {
+    const { token } = await api.login(username, password, faceTicket)
     const s = { token, user: username }
     tokenRef.current = token; write(s); setNotice(null); setSession(s)
   }
@@ -50,12 +51,27 @@ export default function App() {
           </div>
         </div>
       </header>
-      {session ? <Home api={api} session={session} onLogout={logout} /> : <Login onSubmit={login} notice={notice} />}
+      {session ? <Home api={api} session={session} onLogout={logout} /> : <Login api={api} onSubmit={login} notice={notice} />}
     </div>
   )
 }
 
+/** Aiguille vers la console back-office (consigne additionnelle 1, compte « manager ») ou le tableau de
+ * bord client PayAlpha, selon le rôle renvoyé par /api/accounts/me. */
 function Home({ api, session, onLogout }) {
+  const [role, setRole] = useState(null)   // null = résolution en cours
+  useEffect(() => {
+    api.me().then((m) => setRole(m.role)).catch((e) => {
+      if (e.status === 401 || (e.status === 403 && /suspended/.test(e.detail || ''))) onLogout(explain(e.status, e.detail))
+      else setRole('customer')   // dégradé : CustomerHome réessaiera via son propre refresh()
+    })
+  }, [api, onLogout])
+
+  if (role === null) return <main className="grid min-h-[50vh] place-items-center text-muted"><Icon name="spinner" spin size={28} /></main>
+  return role === 'backoffice' ? <BackOffice api={api} /> : <CustomerHome api={api} session={session} onLogout={onLogout} />
+}
+
+function CustomerHome({ api, session, onLogout }) {
   const [me, setMe] = useState(null)
   const [benef, setBenef] = useState([])
   const [pays, setPays] = useState([])

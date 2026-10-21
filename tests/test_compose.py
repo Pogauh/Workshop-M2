@@ -34,7 +34,8 @@ class Compose(unittest.TestCase):
     def test_every_secret_is_required(self):
         txt = (ROOT / "docker-compose.yml").read_text()
         for v in ("POSTGRES_PASSWORD", "API_DB_PASSWORD", "AUTH_DB_PASSWORD", "JWT_SECRET", "INTERNAL_TOKEN", "ACTUATOR_TOKEN",
-                  "EVENT_HMAC_KEY", "GRAFANA_PASSWORD", "DEMO_PASSWORD", "WEAK_PASSWORD", "ATTACKER_PASSWORD", "PROBE_PASSWORD"):
+                  "EVENT_HMAC_KEY", "GRAFANA_PASSWORD", "DEMO_PASSWORD", "WEAK_PASSWORD", "ATTACKER_PASSWORD", "PROBE_PASSWORD",
+                  "MANAGER_PASSWORD", "FACE_TICKET_KEY"):
             self.assertRegex(txt, r"\$\{%s:\?" % v)
         self.assertNotRegex(txt, r"(PASSWORD|SECRET|TOKEN|KEY): +[A-Za-z0-9]{12,}\s*$")
 
@@ -44,6 +45,10 @@ class Compose(unittest.TestCase):
                 host = str(p).split(":")[0]
                 if name == "waf":
                     self.assertEqual(str(p), "8080:8080")
+                elif name == "dashboard":
+                    # Choix délibéré de l'équipe : console en LECTURE SEULE (aucune action exposée, voir
+                    # dashboard/nginx.conf) publiée sur le hotspot pour être montrée depuis un autre poste.
+                    self.assertEqual(str(p), "3000:8080")
                 else:
                     self.assertEqual(host, "127.0.0.1", f"{name} publie {p} hors localhost")
 
@@ -69,7 +74,7 @@ class Compose(unittest.TestCase):
             self.assertNotIn("cap_add", s, n)
 
     def test_hardening_on_application_services(self):
-        for n in ("waf", "web", "api", "auth", "remediator", "actuator", "detector", "dashboard", "assistant"):
+        for n in ("waf", "web", "api", "auth", "face", "remediator", "actuator", "detector", "dashboard", "assistant"):
             s = S[n]
             self.assertTrue(s.get("read_only"), n); self.assertEqual(s.get("cap_drop"), ["ALL"], n)
             self.assertIn("no-new-privileges:true", s.get("security_opt", []), n)

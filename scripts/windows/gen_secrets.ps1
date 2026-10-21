@@ -26,14 +26,18 @@ GRAFANA_PASSWORD=$(New-SecretValue)
 DEMO_PASSWORD=$(New-SecretValue)
 ATTACKER_PASSWORD=$(New-SecretValue)
 PROBE_PASSWORD=$(New-SecretValue)
+MANAGER_PASSWORD=$(New-SecretValue)
+FACE_TICKET_KEY=$(New-SecretValue)
 WEAK_PASSWORD=sunshine1
 TRUST_SOURCE_IP=false
 NEVER_BAN=
 TRAFFIC_RPS=4
 ASSISTANT_CHAT_MODEL=qwen2.5:3b-instruct
 ASSISTANT_EMBED_MODEL=nomic-embed-text
+ESP_LED_URL=http://192.168.137.50
 "@ | Set-Content -Encoding ascii $out
 
 Write-Host "OK : $out créé (secrets en clair, locaux à cette machine, jamais commités)."
 Write-Host "WEAK_PASSWORD (compte volontairement faible 'carol', scénario brute-force) est fixe : sunshine1."
+Write-Host "ESP_LED_URL suppose le badge ESP8266 sur 192.168.137.50 (défaut esp8266/platformio.ini) : ajustez si besoin."
 Write-Host "Suite : docker compose up -d --build"

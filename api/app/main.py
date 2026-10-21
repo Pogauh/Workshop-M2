@@ -171,13 +171,13 @@ def get_payment(pid: str, user: str = Depends(current_user)):
 def my_account(user: str = Depends(current_user)):
     try:
         with pool.connection() as conn:
-            r = conn.execute("SELECT a.balance, u.display_name FROM accounts a JOIN users u ON u.username = a.owner "
+            r = conn.execute("SELECT a.balance, u.display_name, u.role FROM accounts a JOIN users u ON u.username = a.owner "
                              "WHERE a.owner=%s", (user,)).fetchone()
     except (PoolTimeout, psycopg.OperationalError):
         raise HTTPException(503, "service busy")
     if not r:
         raise HTTPException(404, "unknown account")
-    return {"owner": user, "display_name": r[1], "balance": str(r[0]), "currency": "EUR"}
+    return {"owner": user, "display_name": r[1], "balance": str(r[0]), "currency": "EUR", "role": r[2]}
 
 
 @app.get("/api/beneficiaries")

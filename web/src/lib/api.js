@@ -60,8 +60,16 @@ export function createClient({ base = '', fetchImpl = (...a) => globalThis.fetch
   }
 
   return {
-    login: async (username, password) => (await call('POST', '/auth/login', { body: { username, password }, auth: false })).data,
+    login: async (username, password, faceTicket) =>
+      (await call('POST', '/auth/login', { body: { username, password, face_ticket: faceTicket ?? null }, auth: false })).data,
     me: async () => (await call('GET', '/api/accounts/me')).data,
+    /** Reconnaissance faciale (consigne additionnelle 1) : {recognized, bootstrap, ticket?, locked_until?, retry_after_s?}. */
+    faceVerify: async (username, imageB64) =>
+      (await call('POST', '/face/verify', { body: { username, image: imageB64 }, auth: false })).data,
+    faceEnroll: async (username, imagesB64) => (await call('POST', '/face/enroll', { body: { username, images: imagesB64 } })).data,
+    faceEnrollments: async () => (await call('GET', '/face/enrollments')).data,
+    faceEnrollStatus: async (username) => (await call('GET', `/face/enroll/status?username=${encodeURIComponent(username)}`)).data,
+    faceUnenroll: async (username) => (await call('DELETE', `/face/enroll/${encodeURIComponent(username)}`)).data,
     beneficiaries: async () => (await call('GET', '/api/beneficiaries')).data,
     payments: async (limit = 20) => (await call('GET', `/api/payments?limit=${limit}`)).data,
     /** health : résultat + latence mesurée côté client (alimente la bande d'état du service). */

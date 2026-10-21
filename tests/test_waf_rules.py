@@ -61,7 +61,8 @@ class Signatures(unittest.TestCase):
         for uri in ["/", "/index.html", "/assets/index-4f3a9c.js", "/auth/login", "/api/payments", "/api/payments?limit=20",
                     "/api/payments/8f3a1c2e-77aa-4b0c-9a55-0c9e0d3f1b22", "/api/accounts/me", "/api/beneficiaries",
                     "/api/payments?label=Loyer%20octobre", "/api/payments?label=caf%C3%A9%20d%27equipe",
-                    "/api/payments?after=2026-10-19T10:00:00Z", "/api/health", "/waf-health"]:
+                    "/api/payments?after=2026-10-19T10:00:00Z", "/api/health", "/waf-health",
+                    "/face/verify", "/face/enroll", "/face/enrollments"]:
             self.assertEqual(sig(uri), "", uri)
 
     def test_scanner_user_agents(self):
@@ -88,7 +89,7 @@ class Structure(unittest.TestCase):
     def test_internal_endpoints_are_not_routed(self):
         self.assertIn("location = /api/health/deep { return 404; }", CONF)
         self.assertNotIn("/internal", CONF.replace("/internal-", ""))
-        self.assertEqual(re.findall(r"proxy_pass \$(\w+);", CONF), ["auth", "api", "web"])
+        self.assertEqual(re.findall(r"proxy_pass \$(\w+);", CONF), ["auth", "face", "api", "web"])
 
     def test_braces_balanced(self):
         body = re.sub(r'"[^"\n]*"|\'[^\'\n]*\'', '""', re.sub(r"(?m)^\s*#.*$", "", CONF))

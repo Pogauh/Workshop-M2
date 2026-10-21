@@ -22,7 +22,7 @@ networks:
   control:  { internal: true }    # plan de contrôle : detector, remediator, actuator, dashboard
   assist:   { internal: true }    # assistant IA : sans route vers la base ni vers l'actionneur
   logs:     { internal: true }    # lecture des journaux Docker : promtail <-> docker-ro uniquement
-volumes: { pgdata: {}, lokidata: {}, promdata: {}, grafdata: {}, detdata: {}, remdata: {}, olladata: {}, chromadata: {} }
+volumes: { pgdata: {}, lokidata: {}, promdata: {}, grafdata: {}, detdata: {}, remdata: {}, olladata: {}, chromadata: {}, facedata: {} }
 
 services:
   # ---------- PEAU : seul point d'entrée exposé (hotspot) ----------
@@ -97,12 +97,33 @@ services:
       WEAK_PASSWORD: ${WEAK_PASSWORD:?}
       ATTACKER_PASSWORD: ${ATTACKER_PASSWORD:?}
       PROBE_PASSWORD: ${PROBE_PASSWORD:?}
-    networks: [internal, obs]
+      MANAGER_PASSWORD: ${MANAGER_PASSWORD:?}
+      FACE_TICKET_KEY: ${FACE_TICKET_KEY:?}     # vérifie le billet émis par « face » (consigne additionnelle 1)
+      ESP_LED_URL: ${ESP_LED_URL:-}             # LED verte fixe (succès) / rouge x10 (échec) sur les comptes face_required
+    networks: [internal, obs, edge]             # edge : atteindre le badge ESP8266 sur le réseau du hotspot (même raison que « face »)
     mem_limit: 384m
     depends_on: { db: { condition: service_healthy } }
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8001/metrics',timeout=2)"]
       interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # ---------- SENS : reconnaissance faciale avant mot de passe, back-office uniquement (consigne additionnelle 1) ----------
+  face:
+    <<: *secure
+    build: ./face
+    container_name: immune-face
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?}               # valide les jetons de session pour /enroll, /enrollments (back-office)
+      FACE_TICKET_KEY: ${FACE_TICKET_KEY:?}      # émet le billet que seul `auth` sait vérifier
+      ESP_LED_URL: ${ESP_LED_URL:-}              # ex. http://192.168.137.50 ; vide = badge non configuré (best-effort)
+    volumes: [facedata:/data]                    # habilitations faciales : isolées, jamais dans la base de paiements
+    networks: [internal, edge]                   # internal : joignable par le WAF ; edge : atteindre le badge ESP8266 sur le hotspot
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8600/health',timeout=2)"]
+      interval: 10s
       timeout: 3s
       retries: 3
 

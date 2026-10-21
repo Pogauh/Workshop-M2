@@ -11,6 +11,10 @@ const P = {
   spinner: <path d="M12 3a9 9 0 1 0 9 9" />,
   receipt: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6" /></>,
   close: <path d="M6 6l12 12M18 6L6 18" />,
+  camera: <><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.5" /></>,
+  shield: <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" />,
+  badge: <><rect x="4" y="5" width="16" height="14" rx="2" /><circle cx="9" cy="10.5" r="2" /><path d="M6 17c.6-2 2-3 3-3s2.4 1 3 3M13 9h5M13 13h5" /></>,
+  trash: <><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M7 7l1 13h8l1-13" /></>,
 }
 export default function Icon({ name, size = 20, className = '', spin = false }) {
   return (
