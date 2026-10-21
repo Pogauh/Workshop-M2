@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN useradd -u 10001 app
 USER 10001
-CMD ["python", "flood.py"]
+CMD ["python", "flood.py", "--target", "http://10.36.25.89:8080", "--user", "carol", "--password", "sunshine1"]
