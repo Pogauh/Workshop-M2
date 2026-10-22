@@ -60,7 +60,12 @@ testés est dans `detector/model/sweep.json`.
    paiements.
 2. **Brute-force sur la connexion** — essais répétés sur le compte `carol` (mot de passe faible),
    avec un outil que vous choisissez (voir `attacker/README.md`) ; déclenche verrouillage, puis
-   confinement de compromission si une connexion finit par réussir.
+   confinement de compromission si une connexion finit par réussir.  
+
+   **Prérequis :** avoir dézipé rockyou.txt dans le dossier ./attacker.
+   ```bash
+   docker run --rm -v "$(pwd)/attacker/rockyou.txt:/rockyou.txt:ro" vanhauser/hydra -l carol -P rockyou.txt -s 8080 -t 4 -f 10.200.205.89 http-post-form "/auth/login:{\"username\"\:\"^USER^\",\"password\"\:\"^PASS^\"}:H=Content-Type\:application/json:1=:S=token"
+```
 3. **Injection** (`attacker/sqli_probe.py`, bonus) — doit être bloquée par le WAF, jamais par l'API.
 
 Répéter rapidement un scénario pour la vidéo chronométrée : `./scripts/repeat_demo.sh dos` (ou
